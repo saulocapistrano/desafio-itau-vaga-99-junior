@@ -6,7 +6,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RequestMapping("/transactions")
+@RequestMapping("/transaction")
 public interface TransactionApi {
     @PostMapping
     ResponseEntity<Void> createTransaction(@Valid @RequestBody TransactionRequestDTO requestDTO);
@@ -14,6 +14,6 @@ public interface TransactionApi {
     @DeleteMapping
     ResponseEntity<Void> deleteTransactions();
 
-    @GetMapping("/statistics")
+    @GetMapping("/statistic")
     ResponseEntity<StatisticsResponseDTO> getStatistics();
 }
