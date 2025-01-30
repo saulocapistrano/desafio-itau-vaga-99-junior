@@ -19,24 +19,24 @@ public class TransactionService {
     public Transaction registerTransaction(TransactionRequestDTO requestDTO) {
         validateTransaction(requestDTO);
 
-        Transaction transaction = new Transaction(requestDTO.getValue(), requestDTO.getDateTimeStamp());
+        Transaction transaction = new Transaction(requestDTO.getValue(), requestDTO.getDateTime());
         transactions.add(transaction);
         return transaction;
     }
 
-    public void deleteTransaction(){
+    public void deleteTransaction() {
         transactions.clear();
     }
 
-    public StatisticsResponseDTO getStatistics(){
-        OffsetDateTime sixtySecondAgo = OffsetDateTime.now().minusSeconds(60);
+    public StatisticsResponseDTO getStatistics() {
+        OffsetDateTime sixtySecondsAgo = OffsetDateTime.now().minusSeconds(60);
 
         List<Transaction> recentTransactions = transactions.stream()
-                .filter(transaction -> transaction.getDateTimeStamp().isAfter(sixtySecondAgo))
+                .filter(transaction -> transaction.getDateTime().isAfter(sixtySecondsAgo))
                 .collect(Collectors.toList());
 
-        if(recentTransactions.isEmpty()){
-            return new StatisticsResponseDTO(0, BigDecimal.ZERO,BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+        if (recentTransactions.isEmpty()) {
+            return new StatisticsResponseDTO(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
 
         BigDecimal sum = recentTransactions.stream()
@@ -59,10 +59,7 @@ public class TransactionService {
     }
 
     private void validateTransaction(TransactionRequestDTO requestDTO) {
-        if (requestDTO.getValue().compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalTransactionException("Value cannot be negative.");
-        }
-        if (requestDTO.getDateTimeStamp().isAfter(OffsetDateTime.now())) {
+        if (requestDTO.getDateTime().isAfter(OffsetDateTime.now())) {
             throw new IllegalTransactionException("Transaction date must not be in the future.");
         }
     }
