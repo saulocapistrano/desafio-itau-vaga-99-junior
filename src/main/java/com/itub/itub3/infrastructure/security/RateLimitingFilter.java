@@ -4,6 +4,7 @@ import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
 import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +24,16 @@ public class RateLimitingFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+
+        if (httpRequest.getRequestURI().startsWith("/v3/api-docs") ||
+                httpRequest.getRequestURI().startsWith("/swagger-ui") ||
+                httpRequest.getRequestURI().startsWith("/swagger-resources") ||
+                httpRequest.getRequestURI().equals("/health")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
         } else {
