@@ -16,7 +16,10 @@ public class SecurityConfig {
                         .frameOptions(frameOptions -> frameOptions.deny())
                         .contentSecurityPolicy(csp -> csp.policyDirectives("script-src 'self'"))
                 )
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/health").permitAll() // Fully allow Swagger
+                        .anyRequest().authenticated()
+                )
                 .build();
     }
 }
