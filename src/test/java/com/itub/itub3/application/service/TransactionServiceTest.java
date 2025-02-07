@@ -5,11 +5,13 @@ import com.itub.itub3.application.dto.response.StatisticsResponseDTO;
 import com.itub.itub3.domain.exception.IllegalTransactionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link TransactionService}.
@@ -19,19 +21,21 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TransactionServiceTest {
 
     private TransactionService transactionService;
+    private ConfigurationService configurationService;
 
     /**
      * Initializes a new instance of {@link TransactionService} before each test execution.
      */
     @BeforeEach
     void setUp() {
-        transactionService = new TransactionService();
+        configurationService = Mockito.mock(ConfigurationService.class);
+
+        when(configurationService.getWindowSeconds()).thenReturn(60);
+
+        transactionService = new TransactionService(configurationService);
     }
 
-    /**
-     * Tests if a valid transaction can be registered without throwing any exception.
-     * A transaction is considered valid if it has a non-negative value and a timestamp in the past or present.
-     */
+
     @Test
     void shouldRegisterValidTransaction() {
         TransactionRequestDTO request = new TransactionRequestDTO(
@@ -42,10 +46,6 @@ public class TransactionServiceTest {
         assertDoesNotThrow(() -> transactionService.registerTransaction(request));
     }
 
-    /**
-     * Tests if an exception is thrown when attempting to register a transaction with a negative value.
-     * Expected outcome: {@link IllegalTransactionException} should be thrown.
-     */
     @Test
     void shouldThrowExceptionForNegativeValue() {
         TransactionRequestDTO request = new TransactionRequestDTO(
@@ -53,13 +53,10 @@ public class TransactionServiceTest {
                 OffsetDateTime.now().minusSeconds(10)
         );
 
-        assertThrows(IllegalTransactionException.class, () -> transactionService.registerTransaction(request));
+        IllegalTransactionException exception = assertThrows(IllegalTransactionException.class, () -> transactionService.registerTransaction(request));
+        assertEquals("Transaction value must be equal or greater than 0.", exception.getMessage());
     }
 
-    /**
-     * Tests if an exception is thrown when attempting to register a transaction with a future timestamp.
-     * Expected outcome: {@link IllegalTransactionException} should be thrown.
-     */
     @Test
     void shouldThrowExceptionForFutureTransaction() {
         TransactionRequestDTO request = new TransactionRequestDTO(
@@ -70,28 +67,50 @@ public class TransactionServiceTest {
         assertThrows(IllegalTransactionException.class, () -> transactionService.registerTransaction(request));
     }
 
-    /**
-     * Tests whether all transactions can be successfully deleted.
-     * Expected outcome: After deletion, the total count of transactions should be zero.
-     */
     @Test
     void shouldDeleteAllTransactions() {
+        transactionService.registerTransaction(new TransactionRequestDTO(new BigDecimal("100.00"), OffsetDateTime.now().minusSeconds(10)));
         transactionService.deleteTransaction();
         assertEquals(0, transactionService.getStatistics().getCount());
     }
 
-    /**
-     * Tests whether the statistics return zero values when no transactions exist.
-     * Expected outcome: All statistical values (count, sum, avg, min, max) should be zero.
-     */
     @Test
     void shouldReturnZeroStatisticsWhenNoTransactionsExist() {
         StatisticsResponseDTO statistics = transactionService.getStatistics();
 
         assertEquals(0, statistics.getCount());
-        assertEquals(BigDecimal.ZERO, statistics.getSum());
-        assertEquals(BigDecimal.ZERO, statistics.getAvg());
-        assertEquals(BigDecimal.ZERO, statistics.getMin());
-        assertEquals(BigDecimal.ZERO, statistics.getMax());
+        assertEquals(0, statistics.getSum().compareTo(BigDecimal.ZERO));
+        assertEquals(0, statistics.getAvg().compareTo(BigDecimal.ZERO));
+        assertEquals(0, statistics.getMin().compareTo(BigDecimal.ZERO));
+        assertEquals(0, statistics.getMax().compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    void shouldCalculateStatisticsCorrectly() {
+        transactionService.registerTransaction(new TransactionRequestDTO(new BigDecimal("100.00"), OffsetDateTime.now().minusSeconds(5)));
+        transactionService.registerTransaction(new TransactionRequestDTO(new BigDecimal("50.00"), OffsetDateTime.now().minusSeconds(20)));
+        transactionService.registerTransaction(new TransactionRequestDTO(new BigDecimal("150.00"), OffsetDateTime.now().minusSeconds(30)));
+
+        StatisticsResponseDTO statistics = transactionService.getStatistics();
+
+        assertEquals(3, statistics.getCount());
+        assertEquals(0, statistics.getSum().compareTo(new BigDecimal("300.00")));
+        assertEquals(0, statistics.getAvg().compareTo(new BigDecimal("100.00")));
+        assertEquals(0, statistics.getMin().compareTo(new BigDecimal("50.00")));
+        assertEquals(0, statistics.getMax().compareTo(new BigDecimal("150.00")));
+    }
+
+    @Test
+    void shouldIgnoreTransactionsOlderThanWindow() {
+        transactionService.registerTransaction(new TransactionRequestDTO(new BigDecimal("200.00"), OffsetDateTime.now().minusSeconds(120))); // Muito antiga
+        transactionService.registerTransaction(new TransactionRequestDTO(new BigDecimal("300.00"), OffsetDateTime.now().minusSeconds(50))); // Dentro da janela
+
+        StatisticsResponseDTO statistics = transactionService.getStatistics();
+
+        assertEquals(1, statistics.getCount());
+        assertEquals(0, statistics.getSum().compareTo(new BigDecimal("300.00")));
+        assertEquals(0, statistics.getAvg().compareTo(new BigDecimal("300.00")));
+        assertEquals(0, statistics.getMin().compareTo(new BigDecimal("300.00")));
+        assertEquals(0, statistics.getMax().compareTo(new BigDecimal("300.00")));
     }
 }
