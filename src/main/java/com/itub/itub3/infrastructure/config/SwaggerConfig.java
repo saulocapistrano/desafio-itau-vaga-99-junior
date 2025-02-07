@@ -2,8 +2,11 @@ package com.itub.itub3.infrastructure.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
 
 @Configuration
 public class SwaggerConfig {
@@ -13,6 +16,7 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("Transaction API")
                         .version("1.0")
-                        .description("API for handling transactions and statistics"));
+                        .description("API for handling transactions and statistics"))
+                .servers(List.of(new Server().url("http://localhost:8080").description("Local server")));
     }
 }
